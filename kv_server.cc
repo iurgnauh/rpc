@@ -7,10 +7,17 @@
 
 #include "lang/verify.h"
 #include "kv_server.h"
+#include "rpc/slock.h"
 
 
 kv_server::kv_server() 
 {
+	VERIFY(pthread_mutex_init(&map_m_, 0) == 0);
+}
+
+kv_server::~kv_server()
+{
+	VERIFY(pthread_mutex_destroy(&map_m_) == 0);
 }
 
 /* The RPC reply argument "val" should contain 
@@ -20,7 +27,11 @@ int
 kv_server::get(std::string key, kv_protocol::versioned_val &val)
 {
 	// You fill this in for Lab 1.
-	return kv_protocol::IOERR;
+	ScopedLock ml(&map_m_);
+	if (kv_map.find(key) == kv_map.end() || kv_map[key]->deleted)
+		return kv_protocol::NOEXIST;
+	val = kv_map[key]->val;
+	return kv_protocol::OK;
 }
 
 
@@ -31,7 +42,22 @@ int
 kv_server::put(std::string key, std::string buf, int &new_version)
 {
 	// You fill this in for Lab 1.
-	return kv_protocol::IOERR;
+	ScopedLock ml(&map_m_);
+	if (kv_map.find(key) == kv_map.end()) {
+		kv_protocol::versioned_val val;
+		val.buf = buf;
+		val.version = 1;
+		new_version = 1;
+		new_val = value(val, false);
+		kv_map[key] = &new_val;
+		return kv_protocol::OK;
+	}
+	val_p = key_map[key];
+	(val_p->val).buf = buf;
+	(val_p->val).version++;
+	new_version = (val_p->val).version;
+	val_p->deleted = false;
+	return kv_protocol::OK;
 }
 
 /* "remove" the existing key-value entry
@@ -46,7 +72,23 @@ int
 kv_server::remove(std::string key, int &new_version)
 {
 	// You fill this in for Lab 1.
-	return kv_protocol::IOERR;
+	ScopedLock ml(&map_m_);
+	if (kv_map.find(key) == kv_map.end()) {
+		kv_protocol::versioned_val val;
+		val.buf = "";
+		val.version = 1;
+		new_version = 1;
+		new_val = value(val, true);
+		kv_map[key] = &new_val;
+		return kv_protocol::NOEXIST;
+	}
+	val_p = key_map[key];
+	(val_p->val).version++;
+	new_version = (val_p->val).version;
+	if (val_p->deleted)
+		return kv_protocol::NOEXIST;
+	val_p->deleted = true;
+	return kv_protocol::OK;
 }
 
 int 
