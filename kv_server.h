@@ -31,7 +31,7 @@ class kv_server {
 				deleted = d;
 			}
 		};
-		std::map<std::string, value *> kv_map;
+		std::map<std::string, value> kv_map;
 		pthread_mutex_t map_m_;
 
 };
