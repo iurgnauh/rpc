@@ -48,8 +48,8 @@ kv_server::put(std::string key, std::string buf, int &new_version)
 		val.buf = buf;
 		val.version = 1;
 		new_version = 1;
-		value new_val = value(val, false);
-		kv_map[key] = &new_val;
+		kv_map[key] = new value(val, false);
+		//kv_map[key] = &new_val;
 		return kv_protocol::OK;
 	}
 	value *val_p = kv_map[key];
@@ -78,8 +78,8 @@ kv_server::remove(std::string key, int &new_version)
 		val.buf = "";
 		val.version = 1;
 		new_version = 1;
-		value new_val = value(val, true);
-		kv_map[key] = &new_val;
+		kv_map[key] = new value(val, true);
+		//kv_map[key] = &new_val;
 		return kv_protocol::NOEXIST;
 	}
 	value *val_p = kv_map[key];
