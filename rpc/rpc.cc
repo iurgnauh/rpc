@@ -673,10 +673,12 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 				*sz = it->sz;
 				finished = true;
 			}
+			continue;
 		}
 		if (it->xid <= xid_rep) {
 			free(it->buf);
 			reply_window_[clt_nonce].erase(it);
+			continue;
 		}
 		if (it->xid < xid)
 			all_greater = false;
@@ -686,7 +688,7 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 		return DONE;
 	if (seen)
 		return INPROGRESS;
-	if (all_greater)
+	if (all_greater && reply_window_[clt_nonce].size() != 0)
 		return FORGOTTEN;
 
 	reply_t r(xid);
