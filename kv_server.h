@@ -24,9 +24,9 @@ class kv_server {
 
 		struct value
 		{
-			versioned_val val;
+			kv_protocol::versioned_val val;
 			bool deleted;
-			value (versioned_val v, bool d) {
+			value (kv_protocol::versioned_val v, bool d) {
 				val = v;
 				deleted = d;
 			}
