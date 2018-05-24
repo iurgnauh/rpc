@@ -28,9 +28,9 @@ kv_server::get(std::string key, kv_protocol::versioned_val &val)
 {
 	// You fill this in for Lab 1.
 	ScopedLock ml(&map_m_);
-	if (kv_map.find(key) == kv_map.end() || kv_map[key]->deleted)
+	if (kv_map.find(key) == kv_map.end() || kv_map[key].deleted)
 		return kv_protocol::NOEXIST;
-	val = kv_map[key]->val;
+	val = kv_map[key].val;
 	return kv_protocol::OK;
 }
 
@@ -48,15 +48,21 @@ kv_server::put(std::string key, std::string buf, int &new_version)
 		val.buf = buf;
 		val.version = 1;
 		new_version = 1;
-		kv_map[key] = new value(val, false);
+		value new_value = value(val, false);
+		kv_map[key] = new_value;
 		//kv_map[key] = &new_val;
 		return kv_protocol::OK;
 	}
-	value *val_p = kv_map[key];
-	(val_p->val).buf = buf;
-	(val_p->val).version++;
-	new_version = (val_p->val).version;
-	val_p->deleted = false;
+	// value *val_p = kv_map[key];
+	// (val_p->val).buf = buf;
+	// (val_p->val).version++;
+	// new_version = (val_p->val).version;
+	// val_p->deleted = false;
+
+	kv_map[key].val.buf = buf;
+	kv_map[key].val.version++;
+	new_version = kv_map[key].val.version;
+	kv_map[key].deleted = false;
 	return kv_protocol::OK;
 }
 
@@ -78,16 +84,22 @@ kv_server::remove(std::string key, int &new_version)
 		val.buf = "";
 		val.version = 1;
 		new_version = 1;
-		kv_map[key] = new value(val, true);
+		value new_value = value(val, true);
+		kv_map[key] = new_value;
 		//kv_map[key] = &new_val;
 		return kv_protocol::NOEXIST;
 	}
-	value *val_p = kv_map[key];
-	(val_p->val).version++;
-	new_version = (val_p->val).version;
-	if (val_p->deleted)
+	// value *val_p = kv_map[key];
+	// (val_p->val).version++;
+	// new_version = (val_p->val).version;
+	// if (val_p->deleted)
+	// 	return kv_protocol::NOEXIST;
+
+	kv_map[key].val.version++;
+	new_version = kv_map[key].val.version;
+	if (kv_map[key].deleted)
 		return kv_protocol::NOEXIST;
-	val_p->deleted = true;
+	kv_map[key].deleted = true;
 	return kv_protocol::OK;
 }
 
