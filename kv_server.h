@@ -28,7 +28,7 @@ class kv_server {
 			bool deleted;
 			value (versioned_val v, bool d) {
 				val = v;
-				deleted = d
+				deleted = d;
 			}
 		};
 		std::map<std::string, value *> kv_map;
