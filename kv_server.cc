@@ -48,7 +48,7 @@ kv_server::put(std::string key, std::string buf, int &new_version)
 		val.buf = buf;
 		val.version = 1;
 		new_version = 1;
-		new_val = value(val, false);
+		value new_val = value(val, false);
 		kv_map[key] = &new_val;
 		return kv_protocol::OK;
 	}
