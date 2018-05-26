@@ -558,6 +558,8 @@ rpcs::dispatch(djob_t *j)
 			// if we don't know about this clt_nonce, create a cleanup object
 			if(reply_window_.find(h.clt_nonce) == reply_window_.end()){
 				VERIFY (reply_window_[h.clt_nonce].size() == 0); // create
+				reply_t re(0);
+				reply_window_[h.clt_nonce].push_back(re);
 				jsl_log(JSL_DBG_2,
 						"rpcs::dispatch: new client %u xid %d chan %d, total clients %d\n", 
 						h.clt_nonce, h.xid, c->channo(), (int)reply_window_.size());
@@ -576,9 +578,9 @@ rpcs::dispatch(djob_t *j)
 				conns_[h.clt_nonce] = c;
 			}
 		}
-
 		stat = checkduplicate_and_update(h.clt_nonce, h.xid,
-                                                 h.xid_rep, &b1, &sz1);
+                                             h.xid_rep, &b1, &sz1);
+
 	} else {
 		// this client does not require at most once logic
 		stat = NEW;
@@ -631,6 +633,8 @@ rpcs::dispatch(djob_t *j)
 		case INPROGRESS: // server is working on this request
 			break;
 		case DONE: // duplicate and we still have the response
+			if (!b1)
+				printf("******************************\n");
 			c->send(b1, sz1);
 			break;
 		case FORGOTTEN: // very old request and we don't have the response anymore
@@ -663,9 +667,15 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 		unsigned int xid_rep, char **b, int *sz)
 {
 	ScopedLock rwl(&reply_window_m_);
-	std::list<reply_t>::iterator it;
+	//printf("%d\t%d\t%d\n", clt_nonce, xid, xid_rep);
+	std::list<reply_t>::iterator it = reply_window_[clt_nonce].begin();
 	bool seen = false, finished = false;
-	for (it = reply_window_[clt_nonce].begin(); it != reply_window_[clt_nonce].end(); ) {
+	if (it->xid >= xid)
+		return FORGOTTEN;
+	if (it->xid < xid_rep)
+		it->xid = xid_rep;
+	for (++it; it != reply_window_[clt_nonce].end(); ) {
+		
 		if (it->xid == xid) {
 			seen = true;
 			if (it->cb_present) {
@@ -677,8 +687,9 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 			continue;
 		}
 		if (it->xid <= xid_rep) {
-			if (it->buf)
+			if (it->buf) {
 				free(it->buf);
+			}
 			reply_window_[clt_nonce].erase(it++);
 			continue;
 		}
@@ -689,8 +700,6 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 		return DONE;
 	if (seen)
 		return INPROGRESS;
-	if (xid <= xid_rep)
-		return FORGOTTEN;
 
 	reply_t r(xid);
 	reply_window_[clt_nonce].push_back(r);
